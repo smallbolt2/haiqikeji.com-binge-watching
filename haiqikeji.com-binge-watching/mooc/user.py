@@ -611,8 +611,8 @@ class User:
 
             # 2. 进入心跳循环
             heartbeat_url = f"{self.base_url}/api/user/study_session_heartbeat"
-            if total_required_seconds<100:
-                total_required_seconds = 100  # 只要服务器返回的所需学习时长小于 100 秒，就强制当成 100 秒
+            #if total_required_seconds<100:
+            total_required_seconds = 100  # 只要服务器返回的所需学习时长小于 100 就强制当成 100 
             heartbeat_payload = {
                 "sessionId": session_id,
                 "progress": str(total_required_seconds)
