@@ -1,0 +1,21 @@
+import logging
+from mooc.user import User
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('test')
+
+# 请确保网络可达目标域名；以下使用你提供的抓包 token 和 sessionId
+BASE_URL = 'https://lidapoly.haiqikeji.com'
+TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ7XCJhdmF0YXJcIjpcIlwiLFwiY2lyY2xlQ291bnRcIjowLFwiY2l0eVwiOjAsXCJjbGFzc0lkXCI6MTAwNjg2MCxcImNvbGxlZ2VJZFwiOjUwNCxcImNvbXBsZXRlQ291cnNlXCI6MCxcImRpc2NKb2luXCI6MCxcImRpc2NSZXBseVwiOjAsXCJlbWFpbFwiOlwiXCIsXCJlbnRyeVllYXJcIjoyMDI1LFwiZXJyb3JDb3VudFwiOjEsXCJlcnJvclRpbWVcIjoxNzY3OTY4Nzg3LFwiZ2VuZGVyXCI6XCLnlLdcIixcImlkXCI6MTI4NDEzOCxcImlkQ2FyZFwiOlwiMzQxNjIxMjAwNzA4MzEzMTE4XCIsXCJtb2JpbGVcIjpcIlwiLFwibmFtZVwiOlwi5p2O5r6z5by6XCIsXCJudW1iZXJcIjpcIjI1NTcxMTJcIixcInBhc3N3b3JkXCI6XCIkMmEkMTAkcGhGQlhoc3BhNnRRMEY1OWpYSExCLnRVNGNYLkZyQjNFY05IOFBDdC9UaGtQZW1VdFNDb1dcIixcInBvaW50XCI6MCxcInByb3ZpbmNlXCI6MCxcInJlZ2lvblwiOjAsXCJzY2hvb2xJZFwiOjksXCJzdHVkeUNvdXJzZVwiOjAsXCJzdHVkeUR1cmF0aW9uXCI6MCxcInRpcFBhc3NcIjoxfSIsImlzcyI6Imd1b3plIiwiaWF0IjoxNzgwNTY3MTM1LCJqdGkiOiJmMTI1ODdjZi05OWUzLTQxYzktOTAzMS1kYjIwMDNlMjI1N2MiLCJleHAiOjE3ODA2NTM1MzV9.2AI0gh0Xwesn6axxJM8mE3lv5_YBfoLxYPVTJjmMNwM'
+SESSION_ID = 'a57700bf-f463-4b79-8a86-e7ef5faa0a39'
+COURSE_ID = 1011136
+NODE_ID = 1444258
+
+u = User(BASE_URL, school_id=9, username='test', password='test')
+# 注入 token（模拟登录后状态）
+u.token = TOKEN
+u.student_id = '1284138'
+
+# 运行结束请求
+ok = u.end_study_session('testnode', COURSE_ID, NODE_ID, SESSION_ID, elapsed_seconds=120)
+print('end_study_session returned:', ok)

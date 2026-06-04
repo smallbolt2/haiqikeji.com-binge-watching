@@ -264,6 +264,7 @@ class User:
                 self.logger.warning(f"解析JWT token失败: {str(e)}")
             # 更新请求头，确保token格式正确
             self.session.headers.update({
+                'Authorization': self.token,
                 'token': self.token,
                 'Cookie': f'token={self.token}',
                 'User-Agent': 'Mozilla/5.0 (Linux; Android 11; Pixel 4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
@@ -568,24 +569,23 @@ class User:
 
             # 1. 开启学习会话
             start_url = f"{self.base_url}/api/user/study_session_start"
-            start_params = {
+            start_payload = {
                 "schoolId": str(self.school_id),
                 "userId": str(self.student_id),
                 "courseId": str(course_id),
-                "nodeId": str(node_id)
+                "nodeId": str(node_id),
+                "terminal": "web"
             }
 
             response = None
             try:
-                response = self.session.get(start_url, params=start_params, headers=common_headers)
-                if response.status_code != 200 or response.json().get('code') == 500:
-                    headers_json = common_headers.copy()
-                    headers_json['Content-Type'] = 'application/json'
-                    response = self.session.post(start_url, json=start_params, headers=headers_json)
-                    if response.status_code != 200 or response.json().get('code') == 500:
-                         headers_form = common_headers.copy()
-                         headers_form['Content-Type'] = 'application/x-www-form-urlencoded'
-                         response = self.session.post(start_url, data=start_params, headers=headers_form)
+                headers_json = common_headers.copy()
+                headers_json['Content-Type'] = 'application/json'
+                response = self.session.post(start_url, json=start_payload, headers=headers_json, timeout=10)
+                if response.status_code != 200:
+                    headers_form = common_headers.copy()
+                    headers_form['Content-Type'] = 'application/x-www-form-urlencoded'
+                    response = self.session.post(start_url, data=start_payload, headers=headers_form, timeout=10)
             except Exception as e:
                 self.logger.error(f"[{node_name}] 开启会话网络请求异常: {str(e)}")
                 return False
@@ -606,17 +606,20 @@ class User:
 
             self.logger.info(f"[{node_name}] 🎉 会话成功开启！")
 
+
+
+
             # 2. 进入心跳循环
             heartbeat_url = f"{self.base_url}/api/user/study_session_heartbeat"
-            heartbeat_params = {
-                "schoolId": str(self.school_id),
-                "userId": str(self.student_id),
-                "courseId": str(course_id),
-                "nodeId": str(node_id),
-                "sessionId": session_id
+            if total_required_seconds<100:
+                total_required_seconds = 100  # 只要服务器返回的所需学习时长小于 100 秒，就强制当成 100 秒
+            heartbeat_payload = {
+                "sessionId": session_id,
+                "progress": str(total_required_seconds)
             }
 
             heartbeat_count = 0
+
             while self.running:
                 # 严格等待 12 秒
                 time.sleep(12)
@@ -624,16 +627,23 @@ class User:
                 elapsed_seconds += 12
 
                 # 发送心跳包
-                hb_response = self.session.get(heartbeat_url, params=heartbeat_params, headers=common_headers)
+                headers_json = common_headers.copy()
+                headers_json['Content-Type'] = 'application/json'
+                try:
+                    hb_response = self.session.post(heartbeat_url, json=heartbeat_payload, headers=headers_json, timeout=10)
+                except Exception as e:
+                    self.logger.error(f"[{node_name}] 心跳请求网络异常: {e}")
+                    time.sleep(2)
+                    continue
                 
 
 
 
 
-                if hb_response.status_code != 200 or hb_response.json().get('code') == 500:
-                    headers_json = common_headers.copy()
-                    headers_json['Content-Type'] = 'application/json'
-                    hb_response = self.session.post(heartbeat_url, json=heartbeat_params, headers=headers_json)
+                if hb_response.status_code != 200:
+                    headers_form = common_headers.copy()
+                    headers_form['Content-Type'] = 'application/x-www-form-urlencoded'
+                    hb_response = self.session.post(heartbeat_url, data=heartbeat_payload, headers=headers_form, timeout=10)
 
                 try:
                     hb_data = hb_response.json()
@@ -642,22 +652,22 @@ class User:
                     continue
 
                 if hb_data.get('code') == 200:
-                    pass # 心跳成功不再每 12 秒频繁刷屏
+                    heartbeat_count += 1
                 elif hb_data.get('code') == 500 and "频繁" in str(hb_data.get('data', '')):
                     self.logger.warning(f"[{node_name}] 心跳被限流，延长等待时间...")
                     time.sleep(5)
 
                 # 每成功发送 3 次心跳 (约 36-40 秒)，打印一次本地计算的进度
-                heartbeat_count += 1
                 if heartbeat_count % 3 == 0:
                     percent = min(100, int((elapsed_seconds / total_required_seconds) * 100))
-                    self.logger.info(f"[{node_name}] 本地模拟学习进度: {percent}% ({elapsed_seconds}/{total_required_seconds}秒)")
+                    #self.logger.info(f"[{node_name}] 本地模拟学习进度: {percent}% ({elapsed_seconds}/{total_required_seconds}秒)")
 
-                    # 【核心防护】：如果本地看的时间已经达到了视频总时长（加15秒缓冲确保服务器记满），直接强行结束本视频！
-                    if elapsed_seconds >= total_required_seconds + 15:
-                        self.logger.info(f"[{node_name}] 🏆 视频学习时长已满，自动切换下一个章节！")
-                        break
-
+                # 【核心防护】：如果本地看的时间已经达到了视频总时长（加15秒缓冲确保服务器记满），直接强行结束本视频！
+                if hb_data.get('code') == 500 :
+                    self.logger.info(f"[{hb_data}] 🏆 异常")
+                    continue
+                else:
+                    break
             # 视频结束时提交学习完成记录
             end_success = self.end_study_session(node_name, course_id, node_id, session_id, elapsed_seconds)
             if not end_success:
@@ -674,33 +684,42 @@ class User:
         """提交视频学习完成状态到 study_session_end 接口。"""
         try:
             end_url = f"{self.base_url}/api/user/study_session_end"
-            end_params = {
-                "schoolId": str(self.school_id),
-                "userId": str(self.student_id),
-                "courseId": str(course_id),
-                "nodeId": str(node_id),
-                "sessionId": session_id,
-                "studyTime": str(elapsed_seconds)
-            }
+            # 真实请求抓包显示：POST + JSON body {"sessionId":"..."}
+            payload = {"sessionId": session_id}
 
             common_headers = {
                 'Authorization': self.token,
                 'token': self.token,
                 'Cookie': f'token={self.token}',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json, text/plain, */*',
+                'Origin': self.base_url,
+                'Referer': f"{self.base_url}/student/course-study"
             }
 
-            response = self.session.get(end_url, params=end_params, headers=common_headers)
-            if response.status_code != 200 or response.json().get('code') == 500:
-                headers_json = common_headers.copy()
-                headers_json['Content-Type'] = 'application/json'
-                response = self.session.post(end_url, json=end_params, headers=headers_json)
-                if response.status_code != 200 or response.json().get('code') == 500:
-                    headers_form = common_headers.copy()
-                    headers_form['Content-Type'] = 'application/x-www-form-urlencoded'
-                    response = self.session.post(end_url, data=end_params, headers=headers_form)
+            # 给后端一点时间登记会话（多数环境里立即生效，但稳妥一点）
+            time.sleep(0.5)
 
-            end_data = response.json()
+            # 优先以 JSON POST 精确发送 sessionId（与浏览器抓包一致）
+            try:
+                response = self.session.post(end_url, json=payload, headers=common_headers, timeout=10)
+            except Exception as e:
+                self.logger.error(f"[{node_name}] 提交结束请求网络错误: {e}")
+                return False
+
+            # 兼容性回退：如果服务器不接受 JSON，再尝试 form-data
+            if response.status_code != 200:
+                headers_form = common_headers.copy()
+                headers_form['Content-Type'] = 'application/x-www-form-urlencoded'
+                response = self.session.post(end_url, data={'sessionId': session_id}, headers=headers_form)
+
+            try:
+                end_data = response.json()
+            except Exception as e:
+                self.logger.error(f"[{node_name}] 解析结束接口响应失败: {e} / raw: {response.text}")
+                return False
+
             if end_data.get('code') == 200:
                 self.logger.info(f"[{node_name}] 已成功提交学习结束接口: {end_data.get('msg')}")
                 return True
@@ -893,8 +912,8 @@ class User:
                 
                 # 完成一轮后等待
                 wait_time = random.randint(300, 600)
-                self.update_status(f"本轮完成，等待 {wait_time} 秒")
-                time.sleep(wait_time)
+                self.update_status(f"本轮完成，等待 {300} 秒")
+                time.sleep(300)
                 
             except Exception as e:
                 self.logger.error(f"运行出错: {str(e)}")
