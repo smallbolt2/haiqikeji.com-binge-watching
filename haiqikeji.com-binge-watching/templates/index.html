@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能刷课系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        /* 配置弹窗样式 */
+        #configModal {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            z-index: 2000;
+            overflow: auto;
+        }
+        
+        .modal-content {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            margin: 10% auto;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+            width: 90%;
+            max-width: 600px;
+            animation: modalAppear 0.5s ease-out;
+        }
+        
+        @keyframes modalAppear {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .modal-header {
+            border-bottom: 1px solid #34495e;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h2 {
+            font-weight: 600;
+            color: #3498db;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .form-control {
+            background-color: #34495e;
+            border: 1px solid #2c3e50;
+            color: #ecf0f1;
+            padding: 12px 15px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            background-color: #3c566d;
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+        }
+        
+        .btn-container {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .btn-save {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-save:hover {
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .btn-cancel {
+            background: #e74c3c;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-cancel:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .btn-save-only {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-save-only:hover {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .required::after {
+            content: " *";
+            color: #e74c3c;
+        }
+        
+        .input-icon {
+            color: #3498db;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    
+    <!-- 配置弹窗 -->
+    <div id="configModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-cog fa-spin"></i> 系统初始化配置</h2>
+            </div>
+            <form id="configForm">
+                <div class="form-group">
+                    <label for="base_url" class="form-label required">
+                        <i class="fas fa-link input-icon"></i> 平台URL
+                    </label>
+                    <input type="url" id="base_url" name="base_url" class="form-control" 
+                           placeholder="填写网课登录页" required
+                           value="">
+                </div>
+                
+                <div class="form-group">
+                    <label for="school_id" class="form-label">
+                        <i class="fas fa-school input-icon"></i> 学校ID
+                    </label>
+                    <input type="number" id="school_id" name="school_id" class="form-control" 
+                           placeholder="默认为0" value="0">
+                </div>
+                
+                <div class="form-group">
+                    <label for="username" class="form-label required">
+                        <i class="fas fa-user input-icon"></i> 用户名
+                    </label>
+                    <input type="text" id="username" name="username" class="form-control" 
+                           placeholder="请输入学号/用户名" required
+                           value="">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password" class="form-label required">
+                        <i class="fas fa-lock input-icon"></i> 密码
+                    </label>
+                    <input type="password" id="password" name="password" class="form-control" 
+                           placeholder="请输入密码" required
+                           value="">
+                </div>
+                
+                <div class="form-group">
+                    <label for="limit" class="form-label">
+                        <i class="fas fa-users input-icon"></i> 同时运行数
+                    </label>
+                    <input type="number" id="limit" name="limit" class="form-control" 
+                           min="1" max="10" placeholder="默认为1" value="1">
+                    <small class="text-muted" style="color: #95a5a6!important; margin-top: 5px; display: block;">
+                        同时运行的用户数量，默认为1
+                    </small>
+                </div>
+                
+                <div class="btn-container">
+                    <button type="button" class="btn btn-cancel" id="cancelBtn">取消</button>
+                    <button type="button" class="btn btn-save-only" id="saveOnlyBtn">仅保存</button>
+                    <button type="submit" class="btn btn-save">保存并启动</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-brain"></i>
+                <span>作者微信smallbolt2</span>
+            </div>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="menu-item active" data-tab="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>仪表盘</span>
+            </div>
+            <div class="menu-item" data-tab="users">
+                <i class="fas fa-users"></i>
+                <span>用户管理</span>
+            </div>
+            <div class="menu-item" data-tab="logs">
+                <i class="fas fa-terminal"></i>
+                <span>系统日志</span>
+            </div>
+            <div class="menu-item" data-tab="settings">
+                <i class="fas fa-cog"></i>
+                <span>系统设置</span>
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <div class="time-display">
+                <i class="fas fa-clock"></i>
+                <span id="currentTime">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <!-- 顶部导航 -->
+        <div class="top-nav">
+            <div class="nav-left" style="display: flex; justify-content: center; gap: 255px;">
+                <h1 class="page-title">智能刷课系统-------------联系作者微信smallbolt2</h1>
+                <h1 class="page-title" style="text-align: center; color:#e51818;" id="dynamicTitle">N</h1>
+                
+            </div>
+            <div class="nav-right">
+                <div class="control-buttons">
+                    <button id="startAllBtn" class="btn-control btn-start">
+                        <i class="fas fa-play"></i>
+                        <span>启动全部</span>
+                    </button>
+                    <button id="stopAllBtn" class="btn-control btn-stop">
+                        <i class="fas fa-stop"></i>
+                        <span>停止全部</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 仪表盘 -->
+        <div class="tab-content active" id="dashboard">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="totalUsers">0</div>
+                        <div class="stat-label">总用户数</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="runningUsers">0</div>
+                        <div class="stat-label">运行中</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="totalCourses">0</div>
+                        <div class="stat-label">总课程</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="totalVideos">0</div>
+                        <div class="stat-label">总视频</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-section">
+                <div class="status-card">
+                    <div class="card-header">
+                        <h3>系统状态</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="status" class="status-display">
+                            <div class="loading-spinner"></div>
+                            <span>检查中...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 用户管理 -->
+        <div class="tab-content" id="users">
+            <div class="users-section">
+                <div class="section-header">
+                    <h2>用户管理</h2>
+                    <div class="user-count">
+                        <span id="userCount">0</span> 个用户
+                    </div>
+                </div>
+                <div class="users-list" id="userList">
+                    <div class="loading-placeholder">
+                        <div class="spinner"></div>
+                        <p>加载用户数据...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统日志 -->
+        <div class="tab-content" id="logs">
+            <div class="logs-section">
+                <div class="section-header">
+                    <h2>系统日志</h2>
+                    <div class="log-controls">
+                        <button id="autoScrollBtn" class="btn-secondary active">
+                            <i class="fas fa-arrow-down"></i>
+                            自动滚动
+                        </button>
+                        <button id="clearLogBtn" class="btn-secondary">
+                            <i class="fas fa-trash"></i>
+                            清除日志
+                        </button>
+                    </div>
+                </div>
+                <div class="logs-container" id="log"></div>
+            </div>
+        </div>
+
+        <!-- 系统设置 -->
+        <div class="tab-content" id="settings">
+            <div class="settings-section">
+                <div class="section-header">
+                    <h2>系统设置</h2>
+                </div>
+                <div class="settings-content">
+                    <div class="setting-group">
+                        <h3>使用说明</h3>
+                        <div class="instructions">
+                            <div class="instruction-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>点击"启动全部"按钮开始自动刷课</span>
+                            </div>
+                            <div class="instruction-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>系统会自动处理验证码和登录</span>
+                            </div>
+                            <div class="instruction-item">
+                                <i class="fas fa-check-circle"></i>
+                                <span>支持多用户并发处理</span>
+                            </div>
+                            <div class="instruction-item warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>请确保网络连接稳定</span>
+                            </div>
+                            <div class="instruction-item warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>建议在非高峰期使用</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <h3>系统信息</h3>
+                        <div class="system-info">
+                            <div class="info-item">
+                                <span class="label">版本:</span>
+                                <span class="value">v1.3.2</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">状态:</span>
+                                <span class="value" id="systemStatus">运行中</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">最后更新:</span>
+                                <span class="value" id="lastUpdate">2025-06-09</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知容器 -->
+    <div id="notificationContainer"></div>
+
+    <!-- JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="/static/js/main.js"></script>
+    
+    <script>
+        // 添加通知函数
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 
+                                  type === 'error' ? 'fa-times-circle' : 
+                                  type === 'warning' ? 'fa-exclamation-triangle' : 
+                                  'fa-info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.getElementById('notificationContainer').appendChild(notification);
+            
+            // 添加显示动画
+            setTimeout(() => notification.classList.add('show'), 10);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        // 配置表单处理
+        $(document).ready(function() {
+            // 检查是否已完成初始配置
+            const hasConfigured = localStorage.getItem('mooc_configured');
+            const savedStartupId = localStorage.getItem('mooc_startup_id');
+            // 从后端传递的启动ID
+            const currentStartupId = '{{ config_startup_id }}';
+            
+            console.log('配置状态检查:', {
+                hasConfigured,
+                savedStartupId,
+                currentStartupId
+            });
+            
+            // 如果未配置或后端重启了，显示配置弹窗
+            if (!hasConfigured || savedStartupId !== currentStartupId) {
+                $('#configModal').show();
+            } else {
+                $('#configModal').hide();
+            }
+            
+            // 仅保存按钮处理
+            $('#saveOnlyBtn').on('click', function() {
+                const config = {
+                    base_url: $('#base_url').val().trim(),
+                    school_id: parseInt($('#school_id').val()) || 0,
+                    username: $('#username').val().trim(),
+                    password: $('#password').val().trim(),
+                    limit: parseInt($('#limit').val()) || 1
+                };
+                
+                // 验证必填字段
+                if (!config.base_url || !config.username || !config.password) {
+                    showNotification('请填写所有必填字段（带*号）', 'error');
+                    return;
+                }
+                
+                // 仅保存配置，不启动
+                saveConfigOnly(config);
+            });
+            
+            // 表单提交处理（保存并启动）
+            $('#configForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const config = {
+                    base_url: $('#base_url').val().trim(),
+                    school_id: parseInt($('#school_id').val()) || 0,
+                    username: $('#username').val().trim(),
+                    password: $('#password').val().trim(),
+                    limit: parseInt($('#limit').val()) || 1
+                };
+                
+                // 验证必填字段
+                if (!config.base_url || !config.username || !config.password) {
+                    showNotification('请填写所有必填字段（带*号）', 'error');
+                    return;
+                }
+                
+                // 保存配置并启动
+                saveConfigAndStart(config);
+            });
+            
+            // 取消按钮
+            $('#cancelBtn').on('click', function() {
+                if (confirm('确定要取消配置吗？系统将使用默认配置启动。')) {
+                    $('#configModal').fadeOut(500);
+                    // 标记为已配置（但未真正保存）
+                    localStorage.setItem('mooc_configured', 'true');
+                    localStorage.setItem('mooc_startup_id', '{{ config_startup_id }}');
+                }
+            });
+        });
+        
+        // 仅保存配置
+        function saveConfigOnly(config) {
+            // 显示加载状态
+            $('#saveOnlyBtn').html('<i class="fas fa-spinner fa-spin"></i> 保存中...').prop('disabled', true);
+            
+            // 调用后端API保存配置
+            fetch('/api/save_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 隐藏配置弹窗
+                    $('#configModal').fadeOut(500);
+                    
+                    // 标记为已配置
+                    localStorage.setItem('mooc_configured', 'true');
+                    localStorage.setItem('mooc_startup_id', data.startup_id);
+                    
+                    console.log('配置保存成功，启动ID:', data.startup_id);
+                    showNotification('配置保存成功！', 'success');
+                } else {
+                    showNotification(data.message || '保存配置失败', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('保存配置出错:', error);
+                showNotification('保存配置失败，请检查网络连接', 'error');
+            })
+            .finally(() => {
+                $('#saveOnlyBtn').html('仅保存').prop('disabled', false);
+            });
+        }
+        
+        // 保存配置并启动
+        function saveConfigAndStart(config) {
+            console.log('开始保存配置...');
+            // 显示加载状态
+            $('.btn-save').html('<i class="fas fa-spinner fa-spin"></i> 保存中...').prop('disabled', true);
+            
+            // 调用后端API保存配置
+            fetch('/api/save_config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('配置保存响应:', data);
+                if (data.success) {
+                    // 隐藏配置弹窗
+                    $('#configModal').fadeOut(500);
+                    
+                    // 标记为已配置
+                    localStorage.setItem('mooc_configured', 'true');
+                    localStorage.setItem('mooc_startup_id', data.startup_id);
+                    
+                    console.log('配置保存成功，启动ID:', data.startup_id);
+                    showNotification('配置保存成功！正在启动用户...', 'success');
+                    
+                    // 完全复制startAllBtn的启动逻辑
+                    console.log('准备启动用户...');
+                    setTimeout(() => {
+                        console.log('开始获取用户列表...');
+                        // 获取所有用户并逐个启动
+                        $.get('/api/users', function(users) {
+                            console.log('获取到用户列表:', users);
+                            let startedCount = 0;
+                            let totalUsers = users.length;
+                            
+                            if (totalUsers === 0) {
+                                console.log('没有找到用户配置');
+                                showNotification('没有找到用户配置', 'warning');
+                                $('.btn-save').html('保存并启动').prop('disabled', false);
+                                return;
+                            }
+                            
+                            // 遍历所有用户并启动
+                            console.log('开始遍历用户并启动...');
+                            users.forEach(function(user, index) {
+                                console.log(`准备启动第 ${index + 1} 个用户:`, user.username);
+                                setTimeout(function() {
+                                    console.log(`正在启动用户 ${user.username}...`);
+                                    $.ajax({
+                                        url: '/api/start',
+                                        method: 'POST',
+                                        contentType: 'application/json',
+                                        data: JSON.stringify({ username: user.username }),
+                                        success: function(response) {
+                                            console.log(`用户 ${user.username} 启动响应:`, response);
+                                            if (response.success) {
+                                                startedCount++;
+                                            }
+                                            
+                                            if (index === totalUsers - 1) {
+                                                console.log(`所有用户启动完成，成功: ${startedCount}/${totalUsers}`);
+                                                showNotification(`成功启动 ${startedCount}/${totalUsers} 个用户`, 'success');
+                                                $('.btn-save').html('保存并启动').prop('disabled', false);
+                                            }
+                                        },
+                                        error: function(xhr, status, error) {
+                                            console.error(`启动用户 ${user.username} 失败:`, {xhr, status, error});
+                                            if (index === totalUsers - 1) {
+                                                showNotification('启动用户时出现错误', 'error');
+                                                $('.btn-save').html('保存并启动').prop('disabled', false);
+                                            }
+                                        }
+                                    });
+                                }, index * 1000); // 每个用户间隔1秒启动
+                            });
+                        }).fail(function(xhr, status, error) {
+                            console.error('获取用户列表失败:', {xhr, status, error});
+                            showNotification('获取用户列表失败', 'error');
+                            $('.btn-save').html('保存并启动').prop('disabled', false);
+                        });
+                    }, 1000); // 延迟1秒启动，确保配置已完全保存
+                } else {
+                    console.error('保存配置失败:', data);
+                    showNotification(data.message || '保存配置失败', 'error');
+                    $('.btn-save').html('保存并启动').prop('disabled', false);
+                }
+            })
+            .catch(error => {
+                console.error('保存配置出错:', error);
+                showNotification('保存配置失败，请检查网络连接', 'error');
+                $('.btn-save').html('保存并启动').prop('disabled', false);
+            });
+        }
+        
+        // 添加一个全局的ajax错误处理
+        $(document).ajaxError(function(event, xhr, settings, error) {
+            console.error('Ajax请求失败:', {
+                url: settings.url,
+                method: settings.method,
+                error: error,
+                status: xhr.status,
+                response: xhr.responseText
+            });
+        });
+    </script>
+</body>
+</html>

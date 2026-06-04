@@ -1,0 +1,14 @@
+{
+  "global": {
+    "server": ":10086",
+    "limit": 1
+  },
+  "users": [
+    {
+      "base_url": "https://lidapoly.haiqikeji.com",
+      "school_id": 0,
+      "username": "2557112",
+      "password": "Li197881"
+    }
+  ]
+}

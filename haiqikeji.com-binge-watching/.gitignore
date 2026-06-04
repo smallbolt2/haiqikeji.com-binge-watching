@@ -1,0 +1,6 @@
+.idea
+config.json
+*.exe
+logs
+*.bat
+aoaostar_mooc

@@ -1,0 +1,2 @@
+想要快速启动时使用：python app.py --default
+需要自定义端口时使用：python app.py
